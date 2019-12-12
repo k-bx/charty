@@ -1,10 +1,11 @@
 module Charty.ArrayUtil
     exposing
-        ( unsafeGet
-        , unsafeFirst
-        , unsafeLast
-        , maximum
-        , unsafeMaximum
+        (
+        -- ( unsafeGet
+        -- , unsafeFirst
+        -- , unsafeLast
+        maximum
+        -- , unsafeMaximum
         )
 
 import Array
@@ -19,21 +20,21 @@ import Array
 -}
 
 
-unsafeGet i array =
-    case Array.get i array of
-        Nothing ->
-            Debug.crash "invalid state"
+-- unsafeGet i array =
+--     case Array.get i array of
+--         Nothing ->
+--             Debug.crash "invalid state"
 
-        Just x ->
-            x
-
-
-unsafeFirst array =
-    unsafeGet 0 array
+--         Just x ->
+--             x
 
 
-unsafeLast array =
-    unsafeGet (Array.length array - 1) array
+-- unsafeFirst array =
+--     unsafeGet 0 array
+
+
+-- unsafeLast array =
+--     unsafeGet (Array.length array - 1) array
 
 
 maximum =
@@ -44,10 +45,10 @@ maximum =
         Array.foldr combine Nothing
 
 
-unsafeMaximum a =
-    case maximum a of
-        Nothing ->
-            Debug.crash "invalid state"
+-- unsafeMaximum a =
+--     case maximum a of
+--         Nothing ->
+--             Debug.crash "invalid state"
 
-        Just x ->
-            x
+--         Just x ->
+--             x

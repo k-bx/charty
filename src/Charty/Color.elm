@@ -1,9 +1,8 @@
-module Charty.Color
-    exposing
-        ( Color
-        , defaultPalette
-        , assignDefaults
-        )
+module Charty.Color exposing
+    ( Color
+    , defaultPalette
+    , assignDefaults
+    )
 
 {-| Utilities for assigning colors to series/data groups.
 You probably won't need to use it unless yo want to modify or use the default color paletter for other purposes.
@@ -11,6 +10,7 @@ You probably won't need to use it unless yo want to modify or use the default co
 @docs Color
 @docs defaultPalette
 @docs assignDefaults
+
 -}
 
 import Array exposing (Array)
@@ -25,7 +25,7 @@ type alias Color =
 
 
 {-| Default color palette.
-All credits for this beautiful palette go to http://www.mulinblog.com/a-color-palette-optimized-for-data-visualization/
+All credits for this beautiful palette go to <http://www.mulinblog.com/a-color-palette-optimized-for-data-visualization/>
 -}
 defaultPalette : Array Color
 defaultPalette =
@@ -52,6 +52,15 @@ assignDefaults dataset =
             Array.length defaultPalette
 
         color index =
-            ArrayUtil.unsafeGet (index % colorCount) defaultPalette
+            Array.get (remainderBy colorCount index) defaultPalette
     in
-        List.indexedMap (\i series -> ( (color i), series )) dataset
+    List.indexedMap (\i series -> ( color i, series )) dataset
+        |> List.filterMap
+            (\( mc, a ) ->
+                case mc of
+                    Nothing ->
+                        Nothing
+
+                    Just c ->
+                        Just ( c, a )
+            )

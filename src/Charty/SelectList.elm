@@ -22,8 +22,8 @@ select =
 
 
 iff : Bool -> a -> Item a
-iff include x =
-    if include then
+iff include_ x =
+    if include_ then
         Just x
     else
         Nothing

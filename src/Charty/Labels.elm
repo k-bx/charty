@@ -29,8 +29,8 @@ withLabels config labels chart =
 drawLabels : Config -> List LabelEntry -> Svg msg
 drawLabels config slices =
     let
-        labels slices =
-            List.indexedMap (labelRow config) slices
+        labels slices2 =
+            List.indexedMap (labelRow config) slices2
     in
         Svg.g [] (labels slices)
 
@@ -56,16 +56,16 @@ labelRow config index ( color, label ) =
         Svg.g
             []
             [ Svg.rect
-                [ x <| toString xBase
-                , y <| toString (paddingTop - (floor <| colorDimensions / 2))
-                , width <| toString colorDimensions
-                , height <| toString colorDimensions
+                [ x <| String.fromInt <| xBase
+                , y <| String.fromInt <| (paddingTop - (floor <| colorDimensions / 2))
+                , width <| String.fromInt <| colorDimensions
+                , height <| String.fromInt <| colorDimensions
                 , fill color
                 ]
                 []
             , text_
-                [ x <| toString (xBase + colorDimensions + 20)
-                , y <| toString paddingTop
+                [ x <| String.fromInt <| (xBase + colorDimensions + 20)
+                , y <| String.fromInt <| paddingTop
                 , fill config.labelsColor
                 , fontFamily "sans-serif"
                 , fontSize "25px"

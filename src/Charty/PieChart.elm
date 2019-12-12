@@ -21,6 +21,7 @@ module Charty.PieChart
 @docs view
 -}
 
+import Basics.Extra
 import Charty.Color as Color exposing (Color)
 import Charty.Labels as Labels exposing (LabelEntry)
 import Svg exposing (..)
@@ -104,12 +105,12 @@ view config dataset =
             { background = config.background
             , labelsColor = config.labelsColor
             }
-            (List.map label slices)
+            (List.map labelE slices)
             (drawSlices config slices)
 
 
-label : Slice -> LabelEntry
-label s =
+labelE : Slice -> LabelEntry
+labelE s =
     ( s.color, s.label )
 
 
@@ -185,13 +186,13 @@ drawSlice config start slice =
                   [ "M 500 500" ]
 
                 -- straight line to point 1
-                , [ "L ", toString x1, toString y1 ]
+                , [ "L ", String.fromFloat x1, String.fromFloat y1 ]
 
                 -- arc definition
                 , [ "A 500 500 0", largeArc, "1" ]
 
                 -- arc to point 2.
-                , [ toString x2, toString y2 ]
+                , [ String.fromFloat x2, String.fromFloat y2 ]
 
                 -- return to center
                 , [ "Z" ]
@@ -220,7 +221,7 @@ drawSlices : Config -> List Slice -> Svg msg
 drawSlices config slices =
     slices
         |> accumulateStart 0
-        |> List.map (uncurry (drawSlice config))
+        |> List.map (Basics.Extra.uncurry (drawSlice config))
         |> Svg.svg [ viewBox "0 0 1000 1000", width "1000" ]
 
 

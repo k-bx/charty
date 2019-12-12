@@ -1,26 +1,32 @@
-module Charty.LineChart
-    exposing
-        ( Dataset
-        , Series
-        , DataPoint
-        , Config
-        , defaults
-        , view
-        )
+module Charty.LineChart exposing
+    ( Dataset
+    , Series
+    , DataPoint
+    , Config
+    , defaults
+    , view
+    )
 
 {-| This module is in charge of drawing line charts.
 
+
 # Data representation
+
 @docs Dataset
 @docs Series
 @docs DataPoint
 
+
 # Settings
+
 @docs Config
 @docs defaults
 
+
 # Drawing
+
 @docs view
+
 -}
 
 import Array exposing (Array)
@@ -28,6 +34,7 @@ import Charty.ArrayUtil as ArrayUtil
 import Charty.Color as Color exposing (Color)
 import Charty.Labels as Labels
 import Charty.SelectList as SL exposing (include, maybe)
+import List.Extra
 import Regex
 import Round
 import Svg exposing (..)
@@ -124,10 +131,11 @@ configuration and dataset. Example usage:
     view : Model -> Html Msg
     view model =
         Html.div
-          []
-          [ Html.p [] [ Html.text "Wow!" ]
-          , LineChart.view LineChart.defaults dataset
-          ]
+            []
+            [ Html.p [] [ Html.text "Wow!" ]
+            , LineChart.view LineChart.defaults dataset
+            ]
+
 -}
 view : Config -> Dataset -> Svg msg
 view cfg dataset =
@@ -147,6 +155,7 @@ view cfg dataset =
         points =
             if cfg.drawPoints then
                 List.map (drawPoints drawingSettings.transform) seriesWithColors
+
             else
                 []
 
@@ -159,12 +168,13 @@ view cfg dataset =
                 , g [] points
                 ]
     in
-        if cfg.drawLabels then
-            seriesWithColors
-                |> List.map (\( color, series ) -> ( color, series.label ))
-                |> addLabels cfg (chart [ width "1000" ])
-        else
-            chart [ width "100%", height "100%" ]
+    if cfg.drawLabels then
+        seriesWithColors
+            |> List.map (\( color, series ) -> ( color, series.label ))
+            |> addLabels cfg (chart [ width "1000" ])
+
+    else
+        chart [ width "100%", height "100%" ]
 
 
 addLabels : Config -> Svg msg -> List Labels.LabelEntry -> Svg msg
@@ -186,37 +196,56 @@ initDrawingSettings cfg dataset =
 
         ys =
             List.map (\( x, y ) -> y) points
+
+        restCase =
+            let
+                padding =
+                    { top = 50, right = 50, bottom = 50, left = 50 }
+            in
+            { padding = padding
+            , transform = initTransform { xMin = 0, xMax = 0, yMin = 0, yMax = 0 } padding
+            , yLabels = Array.fromList [ 0 ]
+            }
     in
-        case ( List.minimum xs, List.maximum xs, List.minimum ys, List.maximum ys ) of
-            ( Just xMin, Just xMax, Just yMin, Just yMax ) ->
-                let
-                    yLabels =
-                        initYLabels yMin yMax
+    case ( List.minimum xs, List.maximum xs ) of
+        ( Just xMin, Just xMax ) ->
+            case ( List.minimum ys, List.maximum ys ) of
+                ( Just yMin, Just yMax ) ->
+                    let
+                        yLabels =
+                            initYLabels yMin yMax
+                    in
+                    case ( List.head (Array.toList yLabels), List.Extra.last (Array.toList yLabels) ) of
+                        ( Just yFirst, Just yLast ) ->
+                            let
+                                bounds =
+                                    { xMin = xMin
+                                    , xMax = xMax
+                                    , yMin = yFirst
+                                    , yMax = yLast
+                                    }
 
-                    bounds =
-                        { xMin = xMin
-                        , xMax = xMax
-                        , yMin = ArrayUtil.unsafeFirst yLabels
-                        , yMax = ArrayUtil.unsafeLast yLabels
-                        }
+                                padding =
+                                    initPadding cfg yLabels
+                            in
+                            case padding of
+                                Just jpadding ->
+                                    { padding = jpadding
+                                    , transform = initTransform bounds jpadding
+                                    , yLabels = yLabels
+                                    }
 
-                    padding =
-                        initPadding cfg yLabels
-                in
-                    { padding = padding
-                    , transform = initTransform bounds padding
-                    , yLabels = yLabels
-                    }
+                                Nothing ->
+                                    restCase
 
-            _ ->
-                let
-                    padding =
-                        { top = 50, right = 50, bottom = 50, left = 50 }
-                in
-                    { padding = padding
-                    , transform = initTransform { xMin = 0, xMax = 0, yMin = 0, yMax = 0 } padding
-                    , yLabels = Array.fromList [ 0 ]
-                    }
+                        _ ->
+                            restCase
+
+                _ ->
+                    restCase
+
+        _ ->
+            restCase
 
 
 initYLabels : Float -> Float -> Array Float
@@ -225,11 +254,13 @@ initYLabels yMin yMax =
         [ 0, yMin, 2 * yMin ]
             |> List.sort
             |> Array.fromList
+
     else
         let
             splitRange min max pieces =
                 if pieces == 0 then
                     [ min ]
+
                 else
                     let
                         -- note that it's better to recalculate the step
@@ -240,35 +271,47 @@ initYLabels yMin yMax =
                         step =
                             (max - min) / toFloat pieces
                     in
-                        min :: (splitRange (min + step) max (pieces - 1))
+                    min :: splitRange (min + step) max (pieces - 1)
         in
-            Array.fromList (splitRange yMin yMax 6)
+        Array.fromList (splitRange yMin yMax 6)
 
 
-initPadding : Config -> Array Float -> Padding
+initPadding : Config -> Array Float -> Maybe Padding
 initPadding cfg yLabels =
     let
         labelOffset =
             label cfg.labelPrecision
                 >> gsub "\\." ""
                 >> String.length
-                >> \n -> toFloat n * 20
+                >> (\n -> toFloat n * 20)
 
         leftOffset =
             yLabels
                 |> Array.map labelOffset
-                |> ArrayUtil.unsafeMaximum
+                |> Array.toList
+                |> List.maximum
     in
-        { top = 50
-        , right = 50
-        , bottom = 50
-        , left = leftOffset
-        }
+    case leftOffset of
+        Nothing ->
+            Nothing
+
+        Just lo ->
+            Just
+                { top = 50
+                , right = 50
+                , bottom = 50
+                , left = lo
+                }
 
 
 gsub : String -> String -> String -> String
-gsub regex replacement =
-    Regex.replace Regex.All (Regex.regex regex) (always replacement)
+gsub regex replacement s =
+    case Regex.fromString regex of
+        Nothing ->
+            s
+
+        Just regexObj ->
+            Regex.replace regexObj (always replacement) s
 
 
 label : Int -> Float -> String
@@ -288,13 +331,14 @@ initTransform { xMin, xMax, yMin, yMax } { top, right, bottom, left } =
         scaleFactor vm vM v =
             if vm == vM then
                 0.5
+
             else
                 (v - vm) / (vM - vm)
     in
-        \( x, y ) ->
-            ( left + drawingWidth * (scaleFactor xMin xMax x)
-            , (1000 - top) - drawingHeight * (scaleFactor yMin yMax y)
-            )
+    \( x, y ) ->
+        ( left + drawingWidth * scaleFactor xMin xMax x
+        , (1000 - top) - drawingHeight * scaleFactor yMin yMax y
+        )
 
 
 axis : Config -> DrawingSettings -> Svg msg
@@ -305,10 +349,10 @@ axis cfg drawingSettings =
 
         axisLine ( vx1, vy1 ) ( vx2, vy2 ) =
             line
-                [ x1 <| toString vx1
-                , y1 <| toString vy1
-                , x2 <| toString vx2
-                , y2 <| toString vy2
+                [ x1 <| vx1
+                , y1 <| vy1
+                , x2 <| vx2
+                , y2 <| vy2
                 , stroke "#CFCFCF"
                 , strokeDasharray "5 5"
                 ]
@@ -319,40 +363,40 @@ axis cfg drawingSettings =
                 yT =
                     Tuple.second <| drawingSettings.transform ( 0, yVal )
             in
-                g []
-                    [ axisLine ( left, yT ) ( 1000 - right, yT )
-                    , text_
-                        [ x <| toString (left - 15)
-                        , y <| toString (yT + 8)
-                        , textAnchor "end"
-                        , fontFamily "Oxygen,Helvetica,Arial,sans-serif"
-                        , fontSize "24px"
-                        , fill "#CFCFCF"
-                        ]
-                        [ text (label cfg.labelPrecision yVal) ]
+            g []
+                [ axisLine ( String.fromFloat left, String.fromFloat yT ) ( String.fromFloat (1000 - right), String.fromFloat yT )
+                , text_
+                    [ x <| String.fromFloat (left - 15)
+                    , y <| String.fromFloat (yT + 8)
+                    , textAnchor "end"
+                    , fontFamily "Oxygen,Helvetica,Arial,sans-serif"
+                    , fontSize "24px"
+                    , fill "#CFCFCF"
                     ]
+                    [ text (label cfg.labelPrecision yVal) ]
+                ]
 
         yLabels =
-            Array.foldr (\l r -> (referenceLine l) :: r) [] drawingSettings.yLabels
+            Array.foldr (\l r -> referenceLine l :: r) [] drawingSettings.yLabels
 
         yAxis =
-            axisLine ( left, bottom ) ( left, 1000 - top )
+            axisLine ( String.fromFloat left, String.fromFloat bottom ) ( String.fromFloat left, String.fromFloat (1000 - top) )
     in
-        g [] (yAxis :: yLabels)
+    g [] (yAxis :: yLabels)
 
 
 drawLine : Transform -> ( Color, Series ) -> Svg msg
 drawLine transform ( color, series ) =
     let
         pointString ( x, y ) =
-            toString x ++ " " ++ toString y
+            x ++ " " ++ y
 
         attr =
             series.data
-                |> List.map (transform >> pointString)
+                |> List.map (transform >> (\( a, b ) -> ( String.fromFloat a, String.fromFloat b )) >> pointString)
                 |> String.join ", "
     in
-        polyline [ points attr, stroke color, fill "transparent" ] []
+    polyline [ points attr, stroke color, fill "transparent" ] []
 
 
 drawPoints : Transform -> ( Color, Series ) -> Svg msg
@@ -370,12 +414,12 @@ drawPoint transform color point =
         handle event setting =
             Maybe.map (\f -> event (f point)) setting
     in
-        circle
-            (SL.select
-                [ include <| cx (toString x)
-                , include <| cy (toString y)
-                , include <| r "10"
-                , include <| fill color
-                ]
-            )
-            []
+    circle
+        (SL.select
+            [ include <| cx (String.fromFloat x)
+            , include <| cy (String.fromFloat y)
+            , include <| r "10"
+            , include <| fill color
+            ]
+        )
+        []
